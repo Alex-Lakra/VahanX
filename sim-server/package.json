@@ -1,0 +1,14 @@
+{
+  "name": "vahanx-sim-server",
+  "version": "1.0.0",
+  "description": "LAN WebSocket CAN Bus Simulator Server for VahanX Diagnostics",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
+
