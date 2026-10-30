@@ -58,31 +58,31 @@ export const NetworkSimModal: React.FC<NetworkSimModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="bg-[#0f1422] border-2 border-cyan-500/80 rounded-2xl max-w-md w-full p-6 shadow-2xl glow-accent text-slate-100">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md select-none">
+      <div className="bg-[#0c1018] border-2 border-cyan-500/80 rounded-3xl max-w-md w-full p-6 shadow-[0_0_35px_rgba(0,212,255,0.3)] text-slate-100">
+        <div className="flex items-center justify-between border-b border-[#1b2536] pb-3">
           <div className="flex items-center gap-2 text-cyan-400">
-            <Wifi className="w-6 h-6" />
+            <Wifi className="w-5 h-5" />
             <h3 className="font-mono text-base font-bold uppercase tracking-wider">
               LAN WebSocket Simulator Setup
             </h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="my-4 space-y-4 text-xs font-sans">
-          <p className="text-slate-300 leading-relaxed">
-            Accepts real-time vehicle telemetry frames broadcast by a second laptop running the{' '}
-            <code className="text-cyan-300 font-mono">sim-server</code> on the same Wi-Fi network.
+        <div className="my-4 space-y-4 text-xs font-mono">
+          <p className="text-slate-300 leading-relaxed font-sans">
+            Accepts real-time vehicle telemetry frames broadcast by a second computer running{' '}
+            <code className="text-cyan-300 font-mono">sim-server</code> on the local network.
           </p>
 
           <div>
-            <label className="block font-mono text-[11px] text-slate-400 uppercase tracking-wider mb-1">
-              Laptop IP Address (Host)
+            <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">
+              Host IP Address
             </label>
-            <div className="flex items-center gap-2 bg-black border border-slate-700 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 bg-[#06080d] border border-[#223045] rounded-xl px-3 py-2.5">
               <Server className="w-4 h-4 text-slate-500 shrink-0" />
               <input
                 type="text"
@@ -95,7 +95,7 @@ export const NetworkSimModal: React.FC<NetworkSimModalProps> = ({ isOpen, onClos
           </div>
 
           <div>
-            <label className="block font-mono text-[11px] text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">
               WebSocket Port
             </label>
             <input
@@ -103,55 +103,47 @@ export const NetworkSimModal: React.FC<NetworkSimModalProps> = ({ isOpen, onClos
               value={port}
               onChange={(e) => setPort(e.target.value)}
               placeholder="8765"
-              className="w-full bg-black border border-slate-700 rounded-lg px-3 py-2 font-mono text-sm text-cyan-200 focus:outline-none"
+              className="w-full bg-[#06080d] border border-[#223045] rounded-xl px-3 py-2.5 font-mono text-sm text-cyan-200 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block font-mono text-[11px] text-slate-400 uppercase tracking-wider mb-1">
-              Target Simulation Scenario
+            <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">
+              Simulation Scenario
             </label>
             <select
               value={scenario}
               onChange={(e) => handleScenarioChange(e.target.value)}
-              className="w-full bg-black border border-slate-700 rounded-lg px-3 py-2 font-mono text-xs text-white focus:outline-none"
+              className="w-full bg-[#06080d] border border-[#223045] rounded-xl px-3 py-2.5 font-mono text-xs text-white focus:outline-none"
             >
               <option value="J1939_NORMAL">J1939: Heavy-Duty Tractor (Nominal Field Duty)</option>
               <option value="J1939_LIMP">J1939: Critical Fault / Low Air Brake (Auto Limp 20 km/h)</option>
-              <option value="J1939_HDV_FULL">J1939: Full Multi-Module (PTO, ISOBUS & 9-Part Hydraulics)</option>
-              <option value="OBD2_NORMAL">OBD-II: Passenger Car (Normal Highway Cruise)</option>
-              <option value="OBD2_OVERHEAT">OBD-II: Thermal Runaway Coolant Alert (109 °C)</option>
-              <option value="OBD2_DTC">OBD-II: Active P0524 Low Oil Pressure Fault</option>
+              <option value="J1939_HDV_FULL">J1939: Full Implement, PTO Slip & Hydraulics</option>
+              <option value="OBD2_NORMAL">OBD-II: Passenger Vehicle Highway Cruise (60 km/h)</option>
+              <option value="OBD2_OVERHEAT">OBD-II: Coolant Overheat (Thermal Advisory)</option>
+              <option value="OBD2_DTC">OBD-II: Low Oil Pressure Trouble Code (P0524)</option>
             </select>
           </div>
 
           {statusMessage && (
-            <div className="p-2.5 rounded-lg bg-black/60 border border-slate-800 flex items-center gap-2 text-xs font-mono">
-              {statusMessage.includes('Connected') ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : statusMessage.includes('failed') ? (
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-              ) : (
-                <div className="w-3 h-3 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin shrink-0" />
-              )}
-              <span className="text-slate-200">{statusMessage}</span>
+            <div className="p-3 rounded-xl bg-[#070b12] border border-[#1b2536] text-[11px] font-mono text-slate-300">
+              {statusMessage}
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#172130]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-mono text-slate-400 hover:text-white"
+            className="px-4 py-2 rounded-xl text-xs font-mono font-bold text-slate-400 hover:text-white transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSaveAndConnect}
             disabled={isTesting}
-            className="px-5 py-2.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg glow-accent flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl font-mono text-xs font-black uppercase tracking-wider bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-[0_0_12px_rgba(0,212,255,0.4)] transition-all hover:scale-105"
           >
-            <Wifi className="w-4 h-4" />
             {isTesting ? 'Connecting...' : 'Connect to LAN Sim'}
           </button>
         </div>
@@ -159,4 +151,3 @@ export const NetworkSimModal: React.FC<NetworkSimModalProps> = ({ isOpen, onClos
     </div>
   );
 };
-

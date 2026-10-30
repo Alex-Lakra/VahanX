@@ -14,8 +14,11 @@ import { RequireHeavyDuty } from './components/RequireHeavyDuty';
 import { useConnectionStore } from './stores/connectionStore';
 import { useTelemetryStore } from './stores/telemetryStore';
 import { useDTCStore } from './stores/dtcStore';
+import { useHealthStore } from './stores/healthStore';
 import { WorkerOutboundMsg } from './types/protocols';
 import { CloudSyncEngine } from './services/CloudSyncEngine';
+import { HealthScoreEngine } from './services/HealthScoreEngine';
+import { LimpModeController } from './services/LimpModeController';
 
 export const App: React.FC = () => {
   const workerRef = useRef<Worker | null>(null);
@@ -26,10 +29,17 @@ export const App: React.FC = () => {
   const setHandshakeStep = useConnectionStore((s) => s.setHandshakeStep);
   const pushRawFrame = useConnectionStore((s) => s.pushRawFrame);
 
+  const core = useTelemetryStore((s) => s.core);
+  const hdv = useTelemetryStore((s) => s.hdv);
   const updateCoreTelemetry = useTelemetryStore((s) => s.updateCoreTelemetry);
   const updateHDVTelemetry = useTelemetryStore((s) => s.updateHDVTelemetry);
   const updateHydraulics = useTelemetryStore((s) => s.updateHydraulics);
+
+  const activeFaults = useDTCStore((s) => s.activeFaults);
   const addFaults = useDTCStore((s) => s.addFaults);
+
+  const hydraulicsScore = useHealthStore((s) => s.hydraulicsScore);
+  const setHealthResult = useHealthStore((s) => s.setHealthResult);
 
   // 1. Initialize Web Worker for parsing
   useEffect(() => {
@@ -84,14 +94,35 @@ export const App: React.FC = () => {
     }
   }, [adapterInstance]);
 
+  // 3. Global Health Score & Limp Mode Evaluation (Impacts all views in real time, including Diagnosis)
+  useEffect(() => {
+    const healthResult = HealthScoreEngine.evaluate(
+      core,
+      hdv,
+      hydraulicsScore,
+      activeFaults,
+      vehicleType
+    );
+    setHealthResult(healthResult.score, healthResult.statusBand, healthResult.categories);
+
+    LimpModeController.evaluate(
+      core,
+      hdv,
+      activeFaults,
+      healthResult.score,
+      vehicleType
+    );
+  }, [core, hdv, hydraulicsScore, activeFaults, vehicleType, setHealthResult]);
+
   return (
     <Router>
-      <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col font-sans select-none">
+      <div className="min-h-screen bg-[#05070a] text-slate-100 flex flex-col font-sans select-none">
         <Navbar />
 
         <main className="flex-1 pb-10">
           <Routes>
-            <Route path="/" element={<TelemetryDashboard />} />
+            <Route path="/" element={<TelemetryDashboard initialView="cluster" />} />
+            <Route path="/telemetry" element={<TelemetryDashboard initialView="grid" />} />
             <Route path="/faults" element={<FaultExplorer />} />
             <Route path="/tuning" element={<TuningPage />} />
             <Route path="/health" element={<HealthScoreboard />} />
@@ -130,4 +161,3 @@ export const App: React.FC = () => {
     </Router>
   );
 };
-

@@ -18,190 +18,181 @@ export const PTODrawbarPage: React.FC = () => {
   const isWheelSlipHigh = hdv.wheelSlipPct.value > 15;
 
   return (
-    <div className="min-h-[calc(100vh-100px)] p-4 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-[calc(100vh-80px)] p-3 sm:p-4 max-w-7xl mx-auto space-y-5 font-sans select-none">
       {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d121e] p-4 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cockpit-card p-4 sm:p-5 rounded-2xl border border-[#1b2536]">
         <div>
           <div className="flex items-center gap-2">
-            <RotateCw className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-mono font-black text-white tracking-wider uppercase">
-              Page 6: Power Take-Off (PTO), Drawbar & ISOBUS Implement
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]" />
+            <h2 className="text-base sm:text-lg font-mono font-bold text-white tracking-wider uppercase">
+              PTO, Drawbar & ISOBUS Implement
             </h2>
           </div>
           <p className="text-xs text-slate-400 font-mono mt-0.5">
-            Mechanical Shaft Power Transfer, Draft Force & ISO 11783 Implement Telematics
+            Shaft Power Transfer, Draft Force & ISO 11783 Implement Telematics
           </p>
         </div>
 
-        <span className="text-xs font-mono px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">
-          Implement Bus: ISO 11783 In-Cab 9-Pin
+        <span className="text-xs font-mono px-3 py-1.5 rounded-xl bg-[#090e17] border border-[#1e2a3c] text-cyan-300 font-bold">
+          IMPLEMENT BUS: ISO 11783 IN-CAB 9-PIN
         </span>
       </div>
 
       {/* Warnings Bar */}
       {isPtoSlipHigh && (
-        <div className="p-3.5 rounded-xl bg-red-950 border border-red-600 text-white flex items-center gap-3 animate-pulse">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/80 via-red-900/60 to-red-950/80 border border-red-600 text-white flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)]">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-          <span className="text-xs font-mono font-bold">
+          <span className="text-xs font-mono font-bold tracking-wider">
             WARNING: PTO clutch slip exceeds 10% ({hdv.ptoClutchSlip.value}%). Implement choke or clutch disc glazing hazard!
           </span>
         </div>
       )}
 
       {/* PANEL 1: POWER TAKE-OFF (PTO) */}
-      <div className="bg-[#0b0e18] p-5 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+      <div className="cockpit-card p-5 rounded-3xl border border-[#1b2536] space-y-4">
+        <div className="flex items-center justify-between border-b border-[#172130] pb-3">
           <div className="flex items-center gap-2">
             <RotateCw className="w-5 h-5 text-cyan-400" />
             <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
               Power Take-Off (PTO) Shaft Telematics (PGN 65264)
             </h3>
           </div>
-          <span
-            className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
-              hdv.ptoEngaged ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'
-            }`}
-          >
-            {hdv.ptoEngaged ? 'ENGAGED' : 'DISENGAGED'}
+          <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+            hdv.ptoEngaged ? 'bg-emerald-500/20 text-[#00ff9d] border border-emerald-500/40' : 'bg-[#121a28] text-slate-400'
+          }`}>
+            {hdv.ptoEngaged ? 'CLUTCH ENGAGED' : 'DISENGAGED'}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* PTO Speed */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 uppercase block">PTO Shaft Speed</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-3xl font-mono font-black text-white">{hdv.ptoSpeed.value}</span>
-              <span className="text-xs font-mono text-slate-400">RPM</span>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Shaft Speed</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-display font-black text-white">{hdv.ptoSpeed.value}</span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">RPM</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Rated Target: 540 RPM</span>
+            <span className="text-[10px] font-mono text-[#00ff9d] block">Target: 540E Mode</span>
           </div>
 
-          {/* PTO Clutch Slip */}
-          <div
-            className={`p-4 rounded-xl border ${
-              isPtoSlipHigh ? 'bg-red-950/60 border-red-600 text-white' : 'bg-black/60 border-slate-800'
-            }`}
-          >
-            <span className="text-xs font-mono text-slate-400 uppercase block">Clutch Slip</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-mono font-black ${isPtoSlipHigh ? 'text-red-400' : 'text-emerald-400'}`}>
-                {hdv.ptoClutchSlip.value}%
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Clutch Slip</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className={`text-3xl font-display font-black ${isPtoSlipHigh ? 'text-red-400' : 'text-white'}`}>
+                {hdv.ptoClutchSlip.value.toFixed(1)}
               </span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">%</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Max Allowable: 10%</span>
+            <span className="text-[10px] font-mono text-slate-500 block">Limit: &lt;10.0%</span>
           </div>
 
-          {/* PTO Torque */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 uppercase block">Transmitted Torque</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-3xl font-mono font-black text-white">{hdv.ptoTorque.value}</span>
-              <span className="text-xs font-mono text-slate-400">Nm</span>
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Shaft Torque</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-display font-black text-white">{hdv.ptoTorque.value}</span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">Nm</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Dynamic Shaft Load</span>
+            <span className="text-[10px] font-mono text-slate-500 block">Rated Max: 1,450 Nm</span>
           </div>
 
-          {/* Safety Guard Interlock */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800 flex flex-col justify-between">
-            <span className="text-xs font-mono text-slate-400 uppercase block">PTO Shield Guard</span>
-            <div className="flex items-center gap-2 my-2">
-              {hdv.ptoShieldInterlock ? (
-                <>
-                  <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                  <span className="text-sm font-mono font-bold text-emerald-400">LOCKED & SAFE</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-6 h-6 text-red-500" />
-                  <span className="text-sm font-mono font-bold text-red-400">SHIELD OPEN</span>
-                </>
-              )}
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Safety Interlock</span>
+            <div className="my-2 flex items-center gap-1.5">
+              <ShieldCheck className="w-5 h-5 text-[#00ff9d]" />
+              <span className="text-sm font-mono font-bold text-[#00ff9d]">LOCKED</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Cab Interlock Status</span>
+            <span className="text-[10px] font-mono text-slate-500 block">PTO Shield Guard OK</span>
           </div>
         </div>
       </div>
 
-      {/* PANEL 2: DRAWBAR & TOWING LOAD */}
-      <div className="bg-[#0b0e18] p-5 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2.5">
-          <Anchor className="w-5 h-5 text-amber-400" />
-          <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
-            Drawbar Draft Pulling Force & Wheel Slip
-          </h3>
+      {/* PANEL 2: DRAWBAR, TOWING & WHEEL SLIP */}
+      <div className="cockpit-card p-5 rounded-3xl border border-[#1b2536] space-y-4">
+        <div className="flex items-center justify-between border-b border-[#172130] pb-3">
+          <div className="flex items-center gap-2">
+            <Anchor className="w-5 h-5 text-amber-400" />
+            <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+              Drawbar Draft Force & Tractive Traction (Draft Load Pin)
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+            DRAWBAR CELL
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Draft Force */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 uppercase block">Draft Pulling Force</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-3xl font-mono font-black text-white">{hdv.drawbarDraftForce.value}</span>
-              <span className="text-xs font-mono text-slate-400 uppercase">kN</span>
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Draft Pull Force</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-display font-black text-white">{hdv.drawbarDraftForce.value.toFixed(1)}</span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">kN</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Lower Link Pin Strain Feedback</span>
+            <span className="text-[10px] font-mono text-slate-500 block">Tillage resistance</span>
           </div>
 
-          {/* Tongue Weight */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 uppercase block">Tongue Vertical Load</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-3xl font-mono font-black text-white">{hdv.tongueWeight.value}</span>
-              <span className="text-xs font-mono text-slate-400 uppercase">kg</span>
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Tongue Weight</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-display font-black text-white">{hdv.tongueWeight.value}</span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">kg</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Static Drawbar Downforce</span>
+            <span className="text-[10px] font-mono text-slate-500 block">Vertical hitch load</span>
           </div>
 
-          {/* Wheel Slip % */}
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 uppercase block">Tractor Drive Wheel Slip</span>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-mono font-black ${isWheelSlipHigh ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {hdv.wheelSlipPct.value}%
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Traction Wheel Slip</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className={`text-3xl font-display font-black ${isWheelSlipHigh ? 'text-amber-400' : 'text-[#00ff9d]'}`}>
+                {hdv.wheelSlipPct.value.toFixed(1)}
               </span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">%</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Radar Ground Speed vs Wheel Axle</span>
+            <span className="text-[10px] font-mono text-slate-500 block">Radar ground vs tire speed</span>
           </div>
         </div>
       </div>
 
-      {/* PANEL 3: ISOBUS AGRICULTURAL IMPLEMENT */}
-      <div className="bg-[#0b0e18] p-5 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2.5">
-          <Cpu className="w-5 h-5 text-emerald-400" />
-          <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
-            Connected Implement Telematics (ISOBUS ISO 11783)
-          </h3>
+      {/* PANEL 3: ISOBUS IMPLEMENT TELEMATICS */}
+      <div className="cockpit-card p-5 rounded-3xl border border-[#1b2536] space-y-4">
+        <div className="flex items-center justify-between border-b border-[#172130] pb-3">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-5 h-5 text-[#00ff9d]" />
+            <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+              ISO 11783 Virtual Terminal (ISOBUS Connected Implement)
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            VT CLIENT ACTIVE
+          </span>
         </div>
 
-        <div className="p-4 rounded-xl bg-black/60 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-[11px] font-mono text-slate-400 uppercase block">
-              Working Set Master (Implement ID)
-            </span>
-            <h4 className="text-base font-mono font-extrabold text-white">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Attached Implement</span>
+            <span className="text-base font-mono font-bold text-white block mt-1.5">
               {hdv.isobusImplementName}
-            </h4>
-            <div className="flex items-center gap-3 text-xs font-mono text-slate-400 pt-1">
-              <span>Working Width: <strong className="text-slate-200">{hdv.isobusWorkingWidthMeters} m</strong></span>
-              <span>•</span>
-              <span>Section Control: <strong className="text-emerald-400">ACTIVE</strong></span>
-            </div>
+            </span>
+            <span className="text-[10px] font-mono text-slate-500 mt-1 block">Width: {hdv.isobusWorkingWidthMeters} m</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-slate-900 border border-slate-700 text-center font-mono">
-              <span className="text-[10px] text-slate-400 block uppercase">Fold Lock</span>
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 justify-center">
-                <Lock className="w-3 h-3" />
-                ENGAGED
-              </span>
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Application Rate</span>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-display font-black text-cyan-400">{hdv.isobusApplicationRate.value}</span>
+              <span className="text-xs font-mono text-slate-400 uppercase font-bold">{hdv.isobusApplicationRate.unit}</span>
             </div>
+            <span className="text-[10px] font-mono text-slate-500 block">Prescription target sync</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#090e17] border border-[#182333]">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Boom Fold Status</span>
+            <div className="my-2 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[#00ff9d]" />
+              <span className="text-sm font-mono font-bold text-white">FIELD EXTENDED</span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-500 block">Hydraulic wing lock engaged</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
