@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { useDTCStore } from '../stores/dtcStore';
 import { useConnectionStore } from '../stores/connectionStore';
+import { useHealthStore } from '../stores/healthStore';
 import { openRepairNavigation } from '../utils/mapsNavigation';
 import { lookupDTC } from '../data/dtcDictionary';
 import {
   AlertTriangle,
-  ShieldAlert,
   ChevronDown,
   ChevronUp,
   MapPin,
   Trash2,
-  PlusCircle,
-  HelpCircle,
   Wrench,
   Navigation,
+  CheckCircle2,
+  Activity,
 } from 'lucide-react';
 
 export const FaultExplorer: React.FC = () => {
@@ -21,6 +21,9 @@ export const FaultExplorer: React.FC = () => {
   const clearFaults = useDTCStore((s) => s.clearFaults);
   const addFaults = useDTCStore((s) => s.addFaults);
   const vehicleType = useConnectionStore((s) => s.vehicleType);
+
+  const healthScore = useHealthStore((s) => s.score);
+  const statusBand = useHealthStore((s) => s.statusBand);
 
   const [expandedCodes, setExpandedCodes] = useState<Record<string, boolean>>({
     'P0524': true,
@@ -55,36 +58,51 @@ export const FaultExplorer: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-100px)] p-4 max-w-5xl mx-auto space-y-4">
-      {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d121e] p-4 rounded-xl border border-slate-800">
+    <div className="min-h-[calc(100vh-80px)] p-3 sm:p-4 max-w-5xl mx-auto space-y-4 font-sans select-none">
+      {/* Top Cockpit Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cockpit-card p-4 sm:p-5 rounded-2xl border border-[#1b2536]">
         <div>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-mono font-black text-white tracking-wider uppercase">
-              Page 2: Diagnostic Trouble Codes & Repair Locator
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]" />
+            <h2 className="text-base sm:text-lg font-mono font-bold text-white tracking-wider uppercase">
+              Diagnostic Trouble Codes & Navigation
             </h2>
           </div>
           <p className="text-xs text-slate-400 font-mono mt-0.5">
-            OBD-II (ISO 15765-4) & SAE J1939 DM1/DM2 SPN/FMI Fault Translation Engine
+            OBD-II (ISO 15765-4) & SAE J1939 DM1/DM2 SPN/FMI Fault Analysis
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Live Health Impact Pill */}
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+              statusBand === 'GREEN'
+                ? 'bg-emerald-500/20 text-[#00ff9d] border-emerald-500/40 shadow-[0_0_8px_rgba(0,255,157,0.3)]'
+                : statusBand === 'AMBER'
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                : 'bg-red-500/20 text-rose-400 border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse'
+            }`}
+            title="Real-time Health Score impact"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>HEALTH: {healthScore} ({statusBand})</span>
+          </div>
+
           {/* Quick Navigate Button */}
           <button
             onClick={handleNavigate}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold uppercase tracking-wider shadow-lg glow-neon transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#00ff9d] text-black font-mono text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(0,255,157,0.4)] transition-all hover:scale-105"
           >
-            <Navigation className="w-4 h-4" />
-            <span>Maps Navigation</span>
+            <Navigation className="w-4 h-4 fill-black" />
+            <span>Maps</span>
           </button>
 
           {/* Clear Codes Button */}
           {activeFaults.length > 0 && (
             <button
               onClick={clearFaults}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#141d2a] hover:bg-[#1a2638] text-slate-300 font-mono text-xs border border-[#202e42] transition-colors"
               title="Clear Active DTCs (OBD Mode 04 / J1939 DM11)"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -96,38 +114,38 @@ export const FaultExplorer: React.FC = () => {
 
       {/* Active Fault Cards List */}
       {activeFaults.length === 0 ? (
-        <div className="p-12 text-center bg-[#090d16] rounded-2xl border border-dashed border-slate-800 space-y-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-950/60 border border-emerald-500/50 flex items-center justify-center mx-auto text-emerald-400">
-            ✓
+        <div className="p-10 sm:p-14 text-center cockpit-card rounded-3xl border border-[#1b2536] space-y-4">
+          <div className="w-14 h-14 rounded-full bg-[#0a151f] border border-[#00ff9d]/50 flex items-center justify-center mx-auto text-[#00ff9d] shadow-[0_0_20px_rgba(0,255,157,0.2)]">
+            <CheckCircle2 className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="font-mono text-base font-bold text-white uppercase">
-              No Active Diagnostic Trouble Codes Detected
+            <h3 className="font-mono text-base font-bold text-white uppercase tracking-wider">
+              No Active Diagnostic Trouble Codes
             </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-              All engine, transmission, braking, and hydraulic controllers report zero active DM1 or Mode 03 faults.
+            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 font-mono leading-relaxed">
+              All engine, transmission, brake, and hydraulic controllers report 0 active DM1 broadcast frames or Mode 03 requests. Vehicle Health Score is optimal.
             </p>
           </div>
 
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-mono text-slate-500 mr-2">Simulate Fault:</span>
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-xs font-mono text-slate-500 mr-2">Simulate Fault (Impacting Health Score):</span>
             <button
               onClick={() => handleInjectSample('P0524')}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-red-300 border border-red-900/60"
+              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-rose-300 border border-rose-900/60 transition-colors"
             >
-              + P0524 (Low Oil Press)
+              + P0524 (Critical Low Oil)
             </button>
             <button
               onClick={() => handleInjectSample('SPN 100 FMI 1')}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-red-300 border border-red-900/60"
+              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-rose-300 border border-rose-900/60 transition-colors"
             >
-              + SPN 100 FMI 1 (J1939 Oil)
+              + SPN 100 FMI 1 (Critical J1939)
             </button>
             <button
               onClick={() => handleInjectSample('SPN 1087 FMI 1')}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-amber-900/60"
+              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-amber-300 border border-amber-900/60 transition-colors"
             >
-              + SPN 1087 FMI 1 (Air Brake)
+              + SPN 1087 FMI 1 (Advisory Brake)
             </button>
           </div>
         </div>
@@ -140,41 +158,43 @@ export const FaultExplorer: React.FC = () => {
             return (
               <div
                 key={fault.code}
-                className={`rounded-2xl border-2 transition-all overflow-hidden ${
+                className={`rounded-2xl border transition-all overflow-hidden ${
                   isCritical
-                    ? 'border-red-600 bg-red-950/30 glow-danger'
-                    : 'border-amber-500/80 bg-amber-950/20 glow-amber'
+                    ? 'border-red-600 bg-gradient-to-b from-red-950/40 to-[#0c111a] shadow-[0_0_20px_rgba(239,68,68,0.25)]'
+                    : 'border-amber-500/80 bg-gradient-to-b from-amber-950/30 to-[#0c111a] shadow-[0_0_16px_rgba(245,158,11,0.2)]'
                 }`}
               >
                 {/* Card Header */}
                 <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`px-2.5 py-0.5 rounded text-xs font-mono font-black uppercase tracking-wider ${
-                          isCritical ? 'bg-red-600 text-white' : 'bg-amber-500 text-black'
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black uppercase tracking-wider ${
+                          isCritical
+                            ? 'bg-red-600 text-white shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                            : 'bg-amber-500 text-black shadow-[0_0_8px_rgba(245,158,11,0.7)]'
                         }`}
                       >
                         {isCritical ? 'CRITICAL FAULT' : 'ADVISORY FAULT'}
                       </span>
-                      <span className="font-mono text-sm font-bold text-slate-200">
+                      <span className="font-mono text-sm font-black text-white tracking-wide">
                         {fault.code}
                       </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                        SOURCE: {fault.source}
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#101724] border border-[#1b2536] text-slate-400">
+                        BUS: {fault.source}
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-white tracking-tight pt-1">
+                    <h3 className="text-base font-bold text-white tracking-tight pt-0.5">
                       {fault.title}
                     </h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">{fault.description}</p>
+                    <p className="text-xs text-slate-300 font-mono leading-relaxed">{fault.description}</p>
                   </div>
 
                   {/* Google Maps Turn-by-Turn Intent Trigger */}
                   <button
                     onClick={handleNavigate}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold tracking-wider uppercase shadow shrink-0 self-start sm:self-center"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00ff9d] hover:bg-emerald-400 text-black font-mono text-xs font-black tracking-wider uppercase shadow-[0_0_10px_rgba(0,255,157,0.5)] shrink-0 self-start sm:self-center transition-all hover:scale-105"
                   >
                     <MapPin className="w-3.5 h-3.5" />
                     <span>Navigate</span>
@@ -182,21 +202,21 @@ export const FaultExplorer: React.FC = () => {
                 </div>
 
                 {/* Protective Driving Advice Bar */}
-                <div className="px-4 py-2.5 bg-black/60 border-t border-b border-slate-800 text-xs font-mono">
-                  <span className="text-amber-400 font-bold uppercase mr-2">
+                <div className="px-4 py-2.5 bg-[#080d15] border-t border-b border-[#1b2536] text-xs font-mono">
+                  <span className="text-amber-400 font-bold uppercase mr-2 tracking-wider">
                     PROTECTIVE DRIVING ADVICE:
                   </span>
-                  <span className="text-slate-100">{fault.drivingAdvice}</span>
+                  <span className="text-slate-200">{fault.drivingAdvice}</span>
                 </div>
 
                 {/* Root-Cause Drawer Header */}
                 <button
                   onClick={() => toggleExpand(fault.code)}
-                  className="w-full px-4 py-2.5 bg-slate-900/40 hover:bg-slate-900/80 flex items-center justify-between text-xs font-mono text-slate-300 transition-colors"
+                  className="w-full px-4 py-2.5 bg-[#0a0f18]/60 hover:bg-[#0e1522] flex items-center justify-between text-xs font-mono text-slate-300 transition-colors"
                 >
                   <span className="flex items-center gap-2 font-semibold">
                     <Wrench className="w-3.5 h-3.5 text-cyan-400" />
-                    Expand Root-Cause Diagnostics & Troubleshooting Steps
+                    Diagnostics & Recommended Workshop Steps
                   </span>
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4 text-slate-400" />
@@ -207,9 +227,9 @@ export const FaultExplorer: React.FC = () => {
 
                 {/* Expandable Root-Cause Drawer */}
                 {isExpanded && (
-                  <div className="p-4 bg-black/50 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                  <div className="p-4 bg-[#070b12] border-t border-[#1b2536] grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                     <div className="space-y-1.5">
-                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-red-400">
+                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-rose-400">
                         Potential Root Causes:
                       </h5>
                       <ul className="list-disc list-inside space-y-1 text-slate-300">
@@ -239,4 +259,3 @@ export const FaultExplorer: React.FC = () => {
     </div>
   );
 };
-

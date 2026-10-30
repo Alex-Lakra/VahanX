@@ -28,24 +28,24 @@ export class HealthScoreEngine {
     let catAPenalty = 0;
     const catAReasons: string[] = [];
 
-    // Check critical fault codes
+    // Check critical and warning fault codes
     const criticalFaults = activeFaults.filter((f) => f.severity === 'critical');
     const warningFaults = activeFaults.filter((f) => f.severity === 'warning');
 
     if (criticalFaults.length > 0) {
-      catAPenalty += 0.85; // 85% penalty in category
-      catAReasons.push(`${criticalFaults.length} critical fault code(s) active`);
+      catAPenalty = 1.0; // 100% deduction in Category A
+      catAReasons.push(`${criticalFaults.length} critical fault code(s) active: ${criticalFaults.map(f => f.code).join(', ')}`);
     } else if (warningFaults.length > 0) {
-      catAPenalty += Math.min(0.5, warningFaults.length * 0.15);
-      catAReasons.push(`${warningFaults.length} advisory trouble code(s) active`);
+      catAPenalty = Math.min(1.0, warningFaults.length * 0.45);
+      catAReasons.push(`${warningFaults.length} advisory trouble code(s) active: ${warningFaults.map(f => f.code).join(', ')}`);
     }
 
     // Oil Temp check
     if (core.oilTemp.value > 125) {
-      catAPenalty = Math.min(1.0, catAPenalty + 0.4);
+      catAPenalty = 1.0;
       catAReasons.push(`Oil temperature critical (${core.oilTemp.value}°C)`);
     } else if (core.oilTemp.value > 115) {
-      catAPenalty = Math.min(1.0, catAPenalty + 0.15);
+      catAPenalty = Math.min(1.0, catAPenalty + 0.3);
       catAReasons.push(`Oil temperature elevated (${core.oilTemp.value}°C)`);
     }
 
@@ -86,7 +86,7 @@ export class HealthScoreEngine {
 
       // Air brake check (critical < 5.5 bar)
       if (hdv.airBrakeCircuit1.value < 5.5 || hdv.airBrakeCircuit2.value < 5.5) {
-        catCPenalty = Math.min(1.0, catCPenalty + 0.4);
+        catCPenalty = Math.min(1.0, catCPenalty + 0.5);
         catCReasons.push(`Air brake reservoir pressure critical (<5.5 bar)`);
       }
 
@@ -147,7 +147,7 @@ export class HealthScoreEngine {
     const catEScore = Math.max(0, Math.round(100 * (1 - catEPenalty)));
 
     // Composite master score calculation:
-    // Score = 100 - sum(Weight_i * Penalty_i)
+    // Score = 100 - sum(Weight_i * Penalty_i) - DirectDtcPenalty
     const weightA = 35;
     const weightB = 25;
     const weightC = 20;
@@ -160,7 +160,17 @@ export class HealthScoreEngine {
     const penaltyD = (weightD * (100 - catDScore)) / 100;
     const penaltyE = (weightE * (100 - catEScore)) / 100;
 
-    const totalDeductions = penaltyA + penaltyB + penaltyC + penaltyD + penaltyE;
+    // Severe critical fault impact: Critical DTCs directly reduce vehicle health to RED danger band (<40)
+    let directCriticalDtcDeduction = 0;
+    if (criticalFaults.length > 0) {
+      // 1 critical fault drops score by 35 points, 2+ drops by 50+ points
+      directCriticalDtcDeduction = 30 + (criticalFaults.length - 1) * 15;
+    } else if (warningFaults.length > 0) {
+      // Advisory codes deduct 8 points directly
+      directCriticalDtcDeduction = Math.min(20, warningFaults.length * 8);
+    }
+
+    const totalDeductions = penaltyA + penaltyB + penaltyC + penaltyD + penaltyE + directCriticalDtcDeduction;
     const finalScore = Math.max(0, Math.min(100, Math.round(100 - totalDeductions)));
 
     const statusBand: 'GREEN' | 'AMBER' | 'RED' =
@@ -177,7 +187,7 @@ export class HealthScoreEngine {
         name: 'Active DTCs & Lubrication',
         weight: weightA,
         score: catAScore,
-        penaltyPoints: Number(penaltyA.toFixed(1)),
+        penaltyPoints: Number((penaltyA + directCriticalDtcDeduction).toFixed(1)),
         deductionReasons: catAReasons,
       },
       {
@@ -222,4 +232,3 @@ export class HealthScoreEngine {
     };
   }
 }
-

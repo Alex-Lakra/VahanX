@@ -118,6 +118,7 @@ export class CloudSyncEngine {
         await db.driverBehaviourLogs.where('id').anyOf(bIds).modify({ syncStatus: 'synced' });
       }
 
+      await db.syncQueue.clear();
       this.lastSyncTimestamp = Date.now();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -129,4 +130,3 @@ export class CloudSyncEngine {
     }
   }
 }
-

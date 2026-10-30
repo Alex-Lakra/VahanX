@@ -12,10 +12,10 @@ export const DashboardWarningPopup: React.FC = () => {
 
   return (
     <div
-      className={`fixed top-16 left-4 right-4 sm:left-auto sm:right-6 sm:w-[480px] z-50 p-4 rounded-xl border-2 shadow-2xl transition-all duration-200 ${
+      className={`fixed top-16 left-4 right-4 sm:left-auto sm:right-6 sm:w-[480px] z-50 p-5 rounded-2xl border transition-all duration-200 select-none ${
         isCritical
-          ? 'bg-red-950 border-red-500 text-white shadow-red-950/80 glow-danger'
-          : 'bg-amber-950 border-amber-500 text-amber-100 shadow-amber-950/80 glow-amber'
+          ? 'bg-gradient-to-b from-red-950/95 to-[#0f0909] border-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+          : 'bg-gradient-to-b from-amber-950/95 to-[#120e09] border-amber-500 text-amber-100 shadow-[0_0_25px_rgba(245,158,11,0.4)]'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -25,32 +25,32 @@ export const DashboardWarningPopup: React.FC = () => {
           ) : (
             <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
           )}
-          <span className="font-mono text-sm font-extrabold uppercase tracking-wide">
+          <span className="font-mono text-sm font-black uppercase tracking-wider">
             {isCritical ? 'CRITICAL SYSTEM WARNING' : 'ADVISORY WARNING'}
           </span>
         </div>
         <button
           onClick={dismissAlert}
-          className="text-slate-400 hover:text-white p-1 rounded-md transition-colors"
+          className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
           title="Acknowledge alert"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="mt-2">
-        <h4 className="font-bold text-base tracking-tight">{activeAlert.title}</h4>
-        <p className="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">
+      <div className="mt-2.5">
+        <h4 className="font-display font-extrabold text-lg tracking-tight text-white">{activeAlert.title}</h4>
+        <p className="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed font-mono">
           {activeAlert.message}
         </p>
       </div>
 
       {/* Immediate Driving Style Adjustments */}
-      <div className="mt-3 p-2.5 rounded-lg bg-black/60 border border-slate-700/80">
-        <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 mb-1">
+      <div className="mt-3.5 p-3 rounded-xl bg-[#07090e] border border-[#1b2536]">
+        <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-300 flex items-center gap-1.5 mb-1">
           <span>REQUIRED DRIVING-STYLE ADJUSTMENT</span>
         </div>
-        <p className="text-xs font-mono text-slate-100 leading-snug">
+        <p className="text-xs font-mono text-slate-200 leading-snug">
           {activeAlert.drivingAdvice}
         </p>
       </div>
@@ -58,10 +58,10 @@ export const DashboardWarningPopup: React.FC = () => {
       <div className="mt-3 flex justify-end">
         <button
           onClick={dismissAlert}
-          className={`px-3 py-1.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-colors ${
+          className={`px-4 py-1.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all shadow ${
             isCritical
-              ? 'bg-red-600 hover:bg-red-500 text-white'
-              : 'bg-amber-500 hover:bg-amber-400 text-black'
+              ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/40'
+              : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/40'
           }`}
         >
           Acknowledge & Close
@@ -70,4 +70,3 @@ export const DashboardWarningPopup: React.FC = () => {
     </div>
   );
 };
-
