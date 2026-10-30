@@ -60,11 +60,11 @@ export const TELEMETRY_THRESHOLDS: Record<string, ThresholdRule | ((type: Vehicl
   }),
 
   boostGauge: (type: VehicleType) => ({
-    maxWarning: type === 'HDV' ? 2.4 : 1.8,
-    maxCritical: type === 'HDV' ? 2.8 : 2.2,
+    maxWarning: type === 'HDV' ? 2.6 : 2.0,
+    maxCritical: type === 'HDV' ? 3.0 : 2.5,
     warningTitle: 'Turbocharger Overboost Spike',
     warningMessage: (val, vType) =>
-      `Manifold absolute boost reached ${val.toFixed(2)} bar (Limit: ${vType === 'HDV' ? 2.8 : 2.2} bar). Wastegate or VNT actuator drift.`,
+      `Manifold absolute boost reached ${val.toFixed(2)} bar (Limit: ${vType === 'HDV' ? 3.0 : 2.5} bar). Wastegate or VNT actuator drift.`,
     drivingAdvice:
       'Progressively back off the accelerator pedal. Avoid abrupt lift-off to prevent compressor surge and turbo bearing shock load.',
   }),

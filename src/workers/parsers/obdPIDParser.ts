@@ -14,7 +14,8 @@ export function cleanELMResponse(raw: string): string {
 }
 
 /**
- * Decodes standard OBD-II Mode 01 responses (e.g. "41 0C 1A F8" -> RPM).
+ * Decodes standard OBD-II Mode 01 responses (e.g. "41 0C 1A F8" -> RPM)
+ * and Mode 03/07 DTC responses (e.g. "7E8 03 43 01 05 24" -> ['P0524']).
  */
 export function parseOBDFrame(rawString: string): ParsedOBDResult {
   const cleaned = cleanELMResponse(rawString);
@@ -28,12 +29,34 @@ export function parseOBDFrame(rawString: string): ParsedOBDResult {
     return result;
   }
 
-  // Check for Mode 03 / Mode 07 DTC frames: starts with 43 or 47
+  // Check for Mode 03 / Mode 07 DTC frames (Positive response 0x43 or 0x47)
+  let modeIndex = -1;
   if (cleaned.startsWith('43') || cleaned.startsWith('47')) {
-    const dtcHex = cleaned.slice(2);
+    modeIndex = 0;
+  } else {
+    // E.g. "7E8 03 43 01 05 24" -> cleaned: "7E80343010524"
+    const idx43 = cleaned.indexOf('43');
+    const idx47 = cleaned.indexOf('47');
+    if (idx43 !== -1 && (idx47 === -1 || idx43 < idx47)) {
+      modeIndex = idx43;
+    } else if (idx47 !== -1) {
+      modeIndex = idx47;
+    }
+  }
+
+  if (modeIndex !== -1) {
+    let payload = cleaned.slice(modeIndex + 2);
+    // In ISO 15765-4 Mode 03/07, the byte immediately following 43/47 is the DTC count (e.g. 01 for 1 DTC).
+    if (payload.length >= 2) {
+      const possibleCount = parseInt(payload.slice(0, 2), 16);
+      if (possibleCount > 0 && possibleCount <= 16 && (payload.length - 2) >= possibleCount * 4) {
+        payload = payload.slice(2);
+      }
+    }
+
     const dtcs: string[] = [];
-    for (let i = 0; i + 4 <= dtcHex.length; i += 4) {
-      const codeBytes = dtcHex.slice(i, i + 4);
+    for (let i = 0; i + 4 <= payload.length; i += 4) {
+      const codeBytes = payload.slice(i, i + 4);
       if (codeBytes === '0000') continue;
       const firstByte = parseInt(codeBytes.slice(0, 2), 16);
       const secondByte = codeBytes.slice(2, 4);
@@ -42,15 +65,15 @@ export function parseOBDFrame(rawString: string): ParsedOBDResult {
       // 00 -> P0, 01 -> P1, 02 -> P2, 03 -> P3
       // 04 -> C0, 08 -> B0, 0C -> U0
       const prefixCategory = (firstByte & 0xC0) >> 6;
-      const prefixCategoryLetter = ['P', 'C', 'B', 'U'][prefixCategory];
+      const prefixCategoryLetter = ['P', 'C', 'B', 'U'][prefixCategory] || 'P';
       const prefixSecondDigit = (firstByte & 0x30) >> 4;
       const remainderHex = (firstByte & 0x0F).toString(16).toUpperCase() + secondByte;
       dtcs.push(`${prefixCategoryLetter}${prefixSecondDigit}${remainderHex}`);
     }
     if (dtcs.length > 0) {
       result.detectedDTCs = dtcs;
+      return result;
     }
-    return result;
   }
 
   // Look for Mode 01 responses: "41XX..."
@@ -156,4 +179,3 @@ export function parseOBDFrame(rawString: string): ParsedOBDResult {
 
   return result;
 }
-

@@ -292,6 +292,15 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
     this.send(payload);
   }
 
+  sendClearDTCs(): void {
+    const payload = JSON.stringify({
+      type: 'CLEAR_DTCS',
+      sender: 'DASHBOARD',
+      timestamp: Date.now(),
+    });
+    this.send(payload);
+  }
+
   sendEcuTune(profileName: string, boostTargetBar: number, rpmGovernorLimit: number): void {
     const payload = JSON.stringify({
       type: 'ECU_TUNE_FLASH',

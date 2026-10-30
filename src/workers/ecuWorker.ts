@@ -102,7 +102,11 @@ self.onmessage = (event: MessageEvent<WorkerInboundMsg>) => {
 
       // Handle OBD-II frame format (e.g. "41 0C 1A F8" or "43 01 05 24")
       const obdResult = parseOBDFrame(raw);
-      if (obdResult.isPid00Supported || Object.keys(obdResult.telemetryUpdates || {}).length > 0) {
+      if (
+        obdResult.isPid00Supported ||
+        Object.keys(obdResult.telemetryUpdates || {}).length > 0 ||
+        (obdResult.detectedDTCs && obdResult.detectedDTCs.length > 0)
+      ) {
         obdFrameCount++;
         evaluateHandshake();
 

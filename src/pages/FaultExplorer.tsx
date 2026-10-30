@@ -3,7 +3,7 @@ import { useDTCStore } from '../stores/dtcStore';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useHealthStore } from '../stores/healthStore';
 import { openRepairNavigation } from '../utils/mapsNavigation';
-import { lookupDTC } from '../data/dtcDictionary';
+import { NetworkSimulatorAdapter } from '../adapters/NetworkSimulatorAdapter';
 import {
   AlertTriangle,
   ChevronDown,
@@ -14,13 +14,14 @@ import {
   Navigation,
   CheckCircle2,
   Activity,
+  Wifi,
 } from 'lucide-react';
 
 export const FaultExplorer: React.FC = () => {
   const activeFaults = useDTCStore((s) => s.activeFaults);
   const clearFaults = useDTCStore((s) => s.clearFaults);
-  const addFaults = useDTCStore((s) => s.addFaults);
   const vehicleType = useConnectionStore((s) => s.vehicleType);
+  const adapterInstance = useConnectionStore((s) => s.adapterInstance);
 
   const healthScore = useHealthStore((s) => s.score);
   const statusBand = useHealthStore((s) => s.statusBand);
@@ -38,23 +39,28 @@ export const FaultExplorer: React.FC = () => {
     openRepairNavigation({ vehicleType });
   };
 
-  const handleInjectSample = (code: string) => {
-    const entry = lookupDTC(code);
-    addFaults([
-      {
-        code: entry.code,
-        source: entry.source,
-        spn: entry.spn,
-        fmi: entry.fmi,
-        title: entry.title,
-        description: entry.description,
-        severity: entry.severity,
-        drivingAdvice: entry.drivingAdvice,
-        potentialCauses: entry.potentialCauses,
-        diagnosticSteps: entry.diagnosticSteps,
-        timestamp: Date.now(),
-      },
-    ]);
+  const handleClearFaults = () => {
+    clearFaults();
+
+    // 1. Send clear commands across NetworkSimulatorAdapter if connected
+    if (adapterInstance instanceof NetworkSimulatorAdapter) {
+      adapterInstance.sendLimpModeReset();
+      adapterInstance.sendClearDTCs();
+    } else if (adapterInstance && typeof adapterInstance.send === 'function') {
+      adapterInstance.send('04\r');
+    }
+
+    // 2. Broadcast clear event to VahanX Simulator via local BroadcastChannel
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('vahanx_telemetry_bus');
+        bc.postMessage({ type: 'CLEAR_DTCS', sender: 'DASHBOARD', timestamp: Date.now() });
+        bc.postMessage({ type: 'LIMP_MODE_RESET', sender: 'DASHBOARD', timestamp: Date.now() });
+        setTimeout(() => bc.close(), 100);
+      }
+    } catch (e) {
+      // Ignore broadcast errors
+    }
   };
 
   return (
@@ -101,7 +107,7 @@ export const FaultExplorer: React.FC = () => {
           {/* Clear Codes Button */}
           {activeFaults.length > 0 && (
             <button
-              onClick={clearFaults}
+              onClick={handleClearFaults}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#141d2a] hover:bg-[#1a2638] text-slate-300 font-mono text-xs border border-[#202e42] transition-colors"
               title="Clear Active DTCs (OBD Mode 04 / J1939 DM11)"
             >
@@ -127,26 +133,9 @@ export const FaultExplorer: React.FC = () => {
             </p>
           </div>
 
-          <div className="pt-3 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-mono text-slate-500 mr-2">Simulate Fault (Impacting Health Score):</span>
-            <button
-              onClick={() => handleInjectSample('P0524')}
-              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-rose-300 border border-rose-900/60 transition-colors"
-            >
-              + P0524 (Critical Low Oil)
-            </button>
-            <button
-              onClick={() => handleInjectSample('SPN 100 FMI 1')}
-              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-rose-300 border border-rose-900/60 transition-colors"
-            >
-              + SPN 100 FMI 1 (Critical J1939)
-            </button>
-            <button
-              onClick={() => handleInjectSample('SPN 1087 FMI 1')}
-              className="px-3 py-1 rounded-lg bg-[#141d2a] hover:bg-[#1a2638] text-[11px] font-mono font-bold text-amber-300 border border-amber-900/60 transition-colors"
-            >
-              + SPN 1087 FMI 1 (Advisory Brake)
-            </button>
+          <div className="pt-2 flex items-center justify-center gap-2 text-xs font-mono text-slate-400">
+            <Wifi className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Monitored live via CAN bus & VahanX Simulator (Deck 3: Fault Code Injector)</span>
           </div>
         </div>
       ) : (

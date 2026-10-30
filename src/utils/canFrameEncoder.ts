@@ -103,8 +103,8 @@ export function encodeObd2Frames(state: SimTelemetryInput): RawCanFrame[] {
     formattedString: `7E8 03 41 05 ${toHex2(coolantRaw)}`,
   });
 
-  const boost = state.boostPressureBar ?? 0;
-  const mapKpa = Math.round(boost * 100 + 101);
+  const boost = Math.max(0, Math.min(2.5, state.boostPressureBar ?? 0));
+  const mapKpa = Math.round(boost * 100);
   frames.push({
     timestamp: now,
     protocol: 'OBD2_ELM327',
@@ -170,10 +170,11 @@ export function encodeObd2Frames(state: SimTelemetryInput): RawCanFrame[] {
     formattedString: `7E8 04 41 31 ${toHex4(distRaw).match(/.{1,2}/g)?.join(' ')}`,
   });
 
-  if (state.activeDtcs && state.activeDtcs.length > 0) {
-    const dtcList = state.activeDtcs.slice(0, 3);
+  const obdDtcs = (state.activeDtcs || []).filter(d => /^[PBUC]/i.test(d.code));
+  if (obdDtcs.length > 0) {
+    const dtcList = obdDtcs.slice(0, 3);
     const dtcBytes = dtcList.map(d => {
-      const clean = d.code.replace(/^[PBUC]/, '');
+      const clean = d.code.replace(/^[PBUC]/i, '');
       return clean.length === 4 ? `${clean.substring(0, 2)} ${clean.substring(2, 4)}` : '00 00';
     }).join(' ');
     frames.push({
@@ -334,24 +335,25 @@ export function encodeJ1939Frames(state: SimTelemetryInput): RawCanFrame[] {
 
   // 9. PGN 65226 (0x18FECA00) DM1: Active Diagnostic Trouble Codes
   if (state.activeDtcs && state.activeDtcs.length > 0) {
-    const firstDtc = state.activeDtcs[0];
-    const spn = firstDtc.spn || 100;
-    const fmi = firstDtc.fmi || 1;
-    const spnByte1 = spn & 0xFF;
-    const spnByte2 = (spn >> 8) & 0xFF;
-    const spnByte3 = ((spn >> 16) & 0x07) << 5 | (fmi & 0x1F);
-    const redLamp = firstDtc.severity === 'CRITICAL_RED' ? 0x04 : 0x00;
-    const amberLamp = firstDtc.severity === 'WARNING_AMBER' ? 0x01 : 0x00;
-    frames.push({
-      timestamp: now,
-      protocol: 'SAE_J1939',
-      canIdHex: '18FECA00',
-      pgnOrPid: 'PGN 65226 (DM1)',
-      dataLength: 8,
-      dataBytesHex: `${toHex2(redLamp | amberLamp)} FF ${toHex2(spnByte1)} ${toHex2(spnByte2)} ${toHex2(spnByte3)} 01 FF FF`,
-      description: `DM1 Fault: SPN ${spn} FMI ${fmi} (${firstDtc.code})`,
-      formattedString: `18FECA00 ${toHex2(redLamp | amberLamp)} FF ${toHex2(spnByte1)} ${toHex2(spnByte2)} ${toHex2(spnByte3)} 01 FF FF`,
-    });
+    for (const dtc of state.activeDtcs) {
+      const spn = dtc.spn || 100;
+      const fmi = dtc.fmi !== undefined ? dtc.fmi : 1;
+      const spnByte1 = spn & 0xFF;
+      const spnByte2 = (spn >> 8) & 0xFF;
+      const spnByte3 = (((spn >> 16) & 0x07) << 5) | (fmi & 0x1F);
+      const redLamp = dtc.severity === 'CRITICAL_RED' ? 0x04 : 0x00;
+      const amberLamp = dtc.severity === 'WARNING_AMBER' ? 0x01 : 0x00;
+      frames.push({
+        timestamp: now,
+        protocol: 'SAE_J1939',
+        canIdHex: '18FECA00',
+        pgnOrPid: 'PGN 65226 (DM1)',
+        dataLength: 8,
+        dataBytesHex: `${toHex2(redLamp | amberLamp)} FF ${toHex2(spnByte1)} ${toHex2(spnByte2)} ${toHex2(spnByte3)} 01 FF FF`,
+        description: `DM1 Fault: SPN ${spn} FMI ${fmi} (${dtc.code})`,
+        formattedString: `18FECA00 ${toHex2(redLamp | amberLamp)} FF ${toHex2(spnByte1)} ${toHex2(spnByte2)} ${toHex2(spnByte3)} 01 FF FF`,
+      });
+    }
   }
 
   // 10. PGN 0 (0x0C000003) TSC1: Limp Mode Derate command
