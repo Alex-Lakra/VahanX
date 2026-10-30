@@ -33,7 +33,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   handshakeStep: 'Ready to connect',
   adapterInstance: null,
   rawFrameSniffer: new RingBuffer<string>(50),
-  networkSimHost: '192.168.1.50',
+  networkSimHost: '127.0.0.1',
   networkSimPort: 8765,
 
   setAdapterType: (type) => set({ adapterType: type }),

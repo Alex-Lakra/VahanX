@@ -61,8 +61,12 @@ export function parseJ1939RawString(rawString: string): ParsedJ1939Result | null
   const canId = parseInt(parts[0], 16);
   if (isNaN(canId)) return null;
 
+  // Support both "CANID B0 B1 B2 B3 B4 B5 B6 B7" and "CANID 8 B0 B1 B2 B3 B4 B5 B6 B7" (with DLC byte)
+  const hasDlcByte = (parts.length >= 10 && parseInt(parts[1], 10) === parts.length - 2);
+  const startIdx = hasDlcByte ? 2 : 1;
+
   const data: number[] = [];
-  for (let i = 1; i < parts.length; i++) {
+  for (let i = startIdx; i < parts.length; i++) {
     const byte = parseInt(parts[i], 16);
     if (!isNaN(byte)) {
       data.push(byte);

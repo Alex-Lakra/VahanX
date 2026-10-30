@@ -95,14 +95,36 @@ export const NetworkSimModal: React.FC<NetworkSimModalProps> = ({ isOpen, onClos
           </div>
 
           <div>
-            <label className="block font-mono text-[11px] text-slate-400 uppercase tracking-wider mb-1">
-              WebSocket Port
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block font-mono text-[11px] text-slate-400 uppercase tracking-wider">
+                WebSocket Port
+              </label>
+              <div className="flex gap-1.5 text-[10px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setPort('8080')}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    port === '8080' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-slate-900 text-slate-400 border-slate-700'
+                  }`}
+                >
+                  8080 (VahanX Sim)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPort('8765')}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    port === '8765' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-slate-900 text-slate-400 border-slate-700'
+                  }`}
+                >
+                  8765 (Legacy)
+                </button>
+              </div>
+            </div>
             <input
               type="number"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              placeholder="8765"
+              placeholder="8080"
               className="w-full bg-black border border-slate-700 rounded-lg px-3 py-2 font-mono text-sm text-cyan-200 focus:outline-none"
             />
           </div>
