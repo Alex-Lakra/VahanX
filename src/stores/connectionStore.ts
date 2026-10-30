@@ -25,19 +25,47 @@ interface ConnectionStore {
   pushRawFrame: (frame: string) => void;
 }
 
+const getInitialHost = (): string => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('vahanx_sim_host');
+    if (saved && saved.trim()) return saved.trim();
+    if (window.location.hostname && window.location.hostname !== 'localhost') {
+      return window.location.hostname;
+    }
+  }
+  return '127.0.0.1';
+};
+
+const getInitialPort = (): number => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('vahanx_sim_port');
+    if (saved) {
+      const p = parseInt(saved, 10);
+      if (!isNaN(p)) return p;
+    }
+  }
+  return 8765;
+};
+
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
-  adapterType: 'SIM_FILE',
+  adapterType: 'SIM_NETWORK',
   isConnected: false,
   isConnecting: false,
   vehicleType: 'HDV', // Default to HDV for full tractor demo, can be switched or auto-detected
   handshakeStep: 'Ready to connect',
   adapterInstance: null,
   rawFrameSniffer: new RingBuffer<string>(50),
-  networkSimHost: '127.0.0.1',
-  networkSimPort: 8765,
+  networkSimHost: getInitialHost(),
+  networkSimPort: getInitialPort(),
 
   setAdapterType: (type) => set({ adapterType: type }),
-  setNetworkSimConfig: (host, port) => set({ networkSimHost: host, networkSimPort: port }),
+  setNetworkSimConfig: (host, port) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vahanx_sim_host', host);
+      localStorage.setItem('vahanx_sim_port', String(port));
+    }
+    set({ networkSimHost: host, networkSimPort: port });
+  },
   setVehicleType: (type) => set({ vehicleType: type }),
   setHandshakeStep: (step) => set({ handshakeStep: step }),
 

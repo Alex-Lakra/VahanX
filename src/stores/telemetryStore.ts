@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CoreTelemetryState, HDVTelemetryState, HydraulicTelemetryState, DashboardAlert, VehicleType } from '../types/telemetry';
+import { CoreTelemetryState, HDVTelemetryState, HydraulicTelemetryState, DashboardAlert, VehicleType, StatusLevel } from '../types/telemetry';
 import { evaluateThreshold } from '../config/VehicleThresholds';
 import { db } from '../db/localDatabase';
 import { useDTCStore } from './dtcStore';
@@ -10,11 +10,13 @@ interface TelemetryStore {
   hydraulics: HydraulicTelemetryState;
   activeAlert: DashboardAlert | null;
   alertQueue: DashboardAlert[];
+  acknowledgedAlerts: Record<string, { level: StatusLevel; timestamp: number }>;
 
   updateCoreTelemetry: (updates: Partial<Record<keyof CoreTelemetryState, number>>, vehicleType: VehicleType) => void;
   updateHDVTelemetry: (updates: Partial<HDVTelemetryState>) => void;
   updateHydraulics: (updates: Partial<HydraulicTelemetryState>) => void;
   dismissAlert: () => void;
+  clearAcknowledgedAlerts: () => void;
   logToDatabase: (vin: string, driverId: string, masterScore: number, limpActive: boolean, limpOverridden: boolean) => Promise<void>;
 }
 
@@ -94,12 +96,15 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
   hydraulics: initialHydraulics,
   activeAlert: null,
   alertQueue: [],
+  acknowledgedAlerts: {},
 
   updateCoreTelemetry: (updates, vehicleType) => {
-    const { core, activeAlert, alertQueue } = get();
+    const { core, activeAlert, alertQueue, acknowledgedAlerts } = get();
     const newCore = { ...core, timestamp: Date.now() };
     let newAlert: DashboardAlert | null = activeAlert;
     const newQueue = [...alertQueue];
+    const newAck = { ...acknowledgedAlerts };
+    let ackChanged = false;
 
     for (const [key, rawVal] of Object.entries(updates)) {
       if (rawVal === undefined || !(key in newCore)) continue;
@@ -113,7 +118,32 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
         status: evalResult.status,
       };
 
-      if (evalResult.alert && evalResult.status !== 'normal') {
+      // If condition returned to normal, remove acknowledgement so future issues will alert again
+      if (evalResult.status === 'normal') {
+        if (newAck[k]) {
+          delete newAck[k];
+          ackChanged = true;
+        }
+        // Also remove any queued alert for this variable if it cleared
+        const qIdx = newQueue.findIndex((q) => q.variable === k);
+        if (qIdx !== -1) {
+          newQueue.splice(qIdx, 1);
+        }
+        continue;
+      }
+
+      if (evalResult.alert) {
+        const ack = newAck[k];
+        // Suppress if already acknowledged by driver at this severity or higher
+        const isAlreadyAcknowledged = ack && (
+          ack.level === evalResult.status ||
+          (ack.level === 'critical' && evalResult.status === 'warning')
+        );
+
+        if (isAlreadyAcknowledged) {
+          continue;
+        }
+
         const alertObj: DashboardAlert = {
           id: `${k}_${Date.now()}`,
           variable: k,
@@ -124,15 +154,26 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
           timestamp: Date.now(),
         };
 
-        if (!newAlert || (evalResult.status === 'critical' && newAlert.level !== 'critical')) {
+        if (!newAlert) {
           newAlert = alertObj;
-        } else if (!newQueue.some((q) => q.variable === k)) {
+        } else if (evalResult.status === 'critical' && newAlert.level !== 'critical') {
+          // Promote critical over warning, pushing previous activeAlert to queue
+          if (!newQueue.some((q) => q.variable === newAlert!.variable)) {
+            newQueue.unshift(newAlert);
+          }
+          newAlert = alertObj;
+        } else if (newAlert.variable !== k && !newQueue.some((q) => q.variable === k)) {
           newQueue.push(alertObj);
         }
       }
     }
 
-    set({ core: newCore, activeAlert: newAlert, alertQueue: newQueue });
+    set({
+      core: newCore,
+      activeAlert: newAlert,
+      alertQueue: newQueue,
+      ...(ackChanged ? { acknowledgedAlerts: newAck } : {}),
+    });
   },
 
   updateHDVTelemetry: (updates) => {
@@ -146,13 +187,38 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
   },
 
   dismissAlert: () => {
-    const { alertQueue } = get();
-    if (alertQueue.length > 0) {
-      const [nextAlert, ...rest] = alertQueue;
-      set({ activeAlert: nextAlert, alertQueue: rest });
-    } else {
-      set({ activeAlert: null });
+    const { activeAlert, alertQueue, acknowledgedAlerts } = get();
+    const newAck = { ...acknowledgedAlerts };
+    if (activeAlert) {
+      newAck[activeAlert.variable] = {
+        level: activeAlert.level,
+        timestamp: Date.now(),
+      };
     }
+
+    // Filter out any queued alerts for the same variable that was just acknowledged
+    const remainingQueue = alertQueue.filter(
+      (q) => !activeAlert || q.variable !== activeAlert.variable
+    );
+
+    if (remainingQueue.length > 0) {
+      const [nextAlert, ...rest] = remainingQueue;
+      set({
+        activeAlert: nextAlert,
+        alertQueue: rest,
+        acknowledgedAlerts: newAck,
+      });
+    } else {
+      set({
+        activeAlert: null,
+        alertQueue: [],
+        acknowledgedAlerts: newAck,
+      });
+    }
+  },
+
+  clearAcknowledgedAlerts: () => {
+    set({ acknowledgedAlerts: {} });
   },
 
   logToDatabase: async (vin, driverId, masterScore, limpActive, limpOverridden) => {

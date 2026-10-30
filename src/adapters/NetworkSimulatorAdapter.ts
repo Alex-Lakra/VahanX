@@ -1,5 +1,7 @@
 import { IHardwareAdapter } from './IHardwareAdapter';
 import { AdapterConfig } from '../types/protocols';
+import { encodeCurrentTelemetryFrames, SimTelemetryInput } from '../utils/canFrameEncoder';
+import { useConnectionStore } from '../stores/connectionStore';
 
 export interface NetworkSimConfig extends AdapterConfig {
   host?: string;
@@ -16,6 +18,7 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
   private socket: WebSocket | null = null;
   private broadcastChannel: BroadcastChannel | null = null;
   private _isConnected = false;
+  private _transport: 'WEBSOCKET' | 'BROADCAST_CHANNEL' | 'DISCONNECTED' = 'DISCONNECTED';
   private dataHandler: ((raw: string) => void) | null = null;
   private errorHandler: ((err: Error) => void) | null = null;
   private reconnectTimer: number | null = null;
@@ -23,6 +26,10 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
 
   get isConnected(): boolean {
     return this._isConnected;
+  }
+
+  get transport(): 'WEBSOCKET' | 'BROADCAST_CHANNEL' | 'DISCONNECTED' {
+    return this._transport;
   }
 
   private handleIncomingPayload(payload: string) {
@@ -35,7 +42,32 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
       try {
         const msg = JSON.parse(clean);
 
-        // Batch of CAN frames
+        // A. Direct Telemetry Packet from VahanX Simulator (format: NORMALIZED_JSON)
+        if (msg.type === 'TELEMETRY_PACKET' && msg.data) {
+          const telemetryData = msg.data as SimTelemetryInput;
+          const frames = encodeCurrentTelemetryFrames(telemetryData);
+          for (const f of frames) {
+            this.dataHandler(f.formattedString);
+          }
+          if (telemetryData.vehicleProfile) {
+            useConnectionStore.getState().setVehicleType(telemetryData.vehicleProfile);
+          }
+          return;
+        }
+
+        // B. Catchup or replay packet on initial connect
+        if (msg.type === 'TELEMETRY_CATCHUP') {
+          const telemetryData = (msg.data?.data || msg.data) as SimTelemetryInput;
+          if (telemetryData) {
+            const frames = encodeCurrentTelemetryFrames(telemetryData);
+            for (const f of frames) {
+              this.dataHandler(f.formattedString);
+            }
+          }
+          return;
+        }
+
+        // C. Batch of CAN frames (format: RAW_CAN_HEX)
         if (msg.type === 'CAN_FRAME_PACKET' && Array.isArray(msg.frames)) {
           for (const f of msg.frames) {
             if (f && f.rawHex) {
@@ -45,8 +77,21 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
           return;
         }
 
-        // Catchup or periodic status packets
-        if (msg.type === 'SERVER_HELLO' || msg.type === 'PONG') {
+        // D. Vehicle Profile Handshake
+        if ((msg.type === 'HANDSHAKE_INIT' || msg.type === 'VEHICLE_PROFILE_CHANGE') && msg.vehicleProfile) {
+          useConnectionStore.getState().setVehicleType(msg.vehicleProfile);
+          return;
+        }
+
+        // E. Server Hello & status packets
+        if (msg.type === 'SERVER_HELLO') {
+          if (msg.lastKnownVehicleProfile) {
+            useConnectionStore.getState().setVehicleType(msg.lastKnownVehicleProfile);
+          }
+          return;
+        }
+
+        if (msg.type === 'PONG') {
           return;
         }
       } catch (e) {
@@ -69,10 +114,11 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
     const host = config.host || config.ipAddress || '127.0.0.1';
     const port = config.port || 8765;
     const url = `ws://${host}:${port}`;
+    const isLocal = host === '127.0.0.1' || host === 'localhost' || host === '::1';
 
-    console.log(`[NetworkSimulatorAdapter] Connecting to ${url}...`);
+    console.log(`[NetworkSimulatorAdapter] Connecting to ${url} (isLocal=${isLocal})...`);
 
-    // Setup BroadcastChannel for zero-config local communication
+    // Setup BroadcastChannel for zero-config local communication across tabs on same machine
     try {
       if (typeof BroadcastChannel !== 'undefined' && !this.broadcastChannel) {
         this.broadcastChannel = new BroadcastChannel('vahanx_telemetry_bus');
@@ -89,71 +135,115 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
     }
 
     return new Promise((resolve, reject) => {
-      try {
-        if (this.socket) {
-          this.socket.close();
-        }
+      let resolved = false;
 
-        this.socket = new WebSocket(url);
+      const tryConnectWebSocket = (targetUrl: string, fallbackUrl?: string) => {
+        try {
+          if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+          }
 
-        const timeout = setTimeout(() => {
-          if (!this._isConnected) {
-            // If broadcast channel is active, we can still function locally
-            if (this.broadcastChannel) {
-              this._isConnected = true;
-              console.log(`[NetworkSimulatorAdapter] WebSocket timed out, operating via local BroadcastChannel`);
+          const ws = new WebSocket(targetUrl);
+          this.socket = ws;
+
+          const timeout = setTimeout(() => {
+            if (!this._isConnected) {
+              if (fallbackUrl) {
+                console.warn(`[NetworkSimulatorAdapter] Failed ${targetUrl}, trying fallback ${fallbackUrl}...`);
+                tryConnectWebSocket(fallbackUrl);
+                return;
+              }
+              // If local on same laptop, fall back to BroadcastChannel
+              if (isLocal && this.broadcastChannel) {
+                this._isConnected = true;
+                this._transport = 'BROADCAST_CHANNEL';
+                console.log(`[NetworkSimulatorAdapter] Local WebSocket timed out, operating via BroadcastChannel`);
+                if (!resolved) {
+                  resolved = true;
+                  resolve();
+                }
+                return;
+              }
+              this.socket?.close();
+              const err = new Error(`Connection to WebSocket simulator at ${url} timed out. Verify the simulator laptop IP and ensure wsRelay (port ${port}) is running.`);
+              this.errorHandler?.(err);
+              if (!resolved) {
+                resolved = true;
+                reject(err);
+              }
+            }
+          }, 4000);
+
+          ws.onopen = () => {
+            clearTimeout(timeout);
+            this._isConnected = true;
+            this._transport = 'WEBSOCKET';
+            console.log(`[NetworkSimulatorAdapter] Connected via Wi-Fi WebSocket at ${targetUrl}`);
+            // Register client as DASHBOARD
+            ws.send(JSON.stringify({
+              type: 'REGISTER',
+              clientType: 'DASHBOARD',
+              timestamp: Date.now(),
+            }));
+            if (!resolved) {
+              resolved = true;
               resolve();
+            }
+          };
+
+          ws.onmessage = (event) => {
+            this.handleIncomingPayload(String(event.data));
+          };
+
+          ws.onerror = (event) => {
+            console.warn('[NetworkSimulatorAdapter] WebSocket error on', targetUrl, event);
+            if (fallbackUrl && !this._isConnected) {
+              clearTimeout(timeout);
+              console.log(`[NetworkSimulatorAdapter] WebSocket error, trying fallback to ${fallbackUrl}...`);
+              tryConnectWebSocket(fallbackUrl);
               return;
             }
-            this.socket?.close();
-            const err = new Error(`Connection to WebSocket simulator at ${url} timed out`);
-            this.errorHandler?.(err);
-            reject(err);
+            if (!isLocal && !this._isConnected) {
+              const err = new Error(`Cannot reach WebSocket simulator at ${targetUrl}. Ensure the host laptop is on the same Wi-Fi network.`);
+              this.errorHandler?.(err);
+            }
+          };
+
+          ws.onclose = () => {
+            console.log('[NetworkSimulatorAdapter] WebSocket closed');
+            if (!isLocal || !this.broadcastChannel) {
+              this._isConnected = false;
+              this._transport = 'DISCONNECTED';
+            }
+          };
+        } catch (err: unknown) {
+          if (fallbackUrl && !this._isConnected) {
+            tryConnectWebSocket(fallbackUrl);
+            return;
           }
-        }, 4000);
-
-        this.socket.onopen = () => {
-          clearTimeout(timeout);
-          this._isConnected = true;
-          console.log(`[NetworkSimulatorAdapter] Connected to laptop sim at ${url}`);
-          // Register client as DASHBOARD
-          this.socket?.send(JSON.stringify({
-            type: 'REGISTER',
-            clientType: 'DASHBOARD',
-            timestamp: Date.now(),
-          }));
-          resolve();
-        };
-
-        this.socket.onmessage = (event) => {
-          this.handleIncomingPayload(String(event.data));
-        };
-
-        this.socket.onerror = (event) => {
-          console.warn('[NetworkSimulatorAdapter] WebSocket error:', event);
-          // Don't immediately fail if local BroadcastChannel is running
-          if (!this.broadcastChannel) {
-            const err = new Error('Network simulator connection error');
-            this.errorHandler?.(err);
+          if (isLocal && this.broadcastChannel) {
+            this._isConnected = true;
+            this._transport = 'BROADCAST_CHANNEL';
+            if (!resolved) {
+              resolved = true;
+              resolve();
+            }
+            return;
           }
-        };
-
-        this.socket.onclose = () => {
-          console.log('[NetworkSimulatorAdapter] WebSocket closed');
-          if (!this.broadcastChannel) {
-            this._isConnected = false;
+          this._isConnected = false;
+          this._transport = 'DISCONNECTED';
+          const error = err instanceof Error ? err : new Error(String(err));
+          if (!resolved) {
+            resolved = true;
+            reject(error);
           }
-        };
-      } catch (err: unknown) {
-        if (this.broadcastChannel) {
-          this._isConnected = true;
-          resolve();
-          return;
         }
-        this._isConnected = false;
-        const error = err instanceof Error ? err : new Error(String(err));
-        reject(error);
-      }
+      };
+
+      // If user passed port 8080 (common confusion with Vite web port), provide fallback to 8765
+      const fallback = port === 8080 ? `ws://${host}:8765` : (port !== 8765 && isLocal ? `ws://${host}:8765` : undefined);
+      tryConnectWebSocket(url, fallback);
     });
   }
 
@@ -171,6 +261,7 @@ export class NetworkSimulatorAdapter implements IHardwareAdapter {
       this.broadcastChannel = null;
     }
     this._isConnected = false;
+    this._transport = 'DISCONNECTED';
   }
 
   async send(command: string): Promise<void> {
