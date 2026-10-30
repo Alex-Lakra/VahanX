@@ -27,7 +27,7 @@ const initialCore: CoreTelemetryState = {
   rpm: { value: 1650, unit: 'RPM', status: 'normal' },
   boostGauge: { value: 1.4, unit: 'bar', status: 'normal' },
   coolantTemp: { value: 90, unit: '°C', status: 'normal' },
-  totalDistance: { value: 12450, unit: 'km', status: 'normal' },
+  totalDistance: { value: 200, unit: 'km', status: 'normal' },
   batterySoC: { value: 92, unit: '%', status: 'normal' },
   systemVoltage: { value: 28.2, unit: 'V', status: 'normal' },
   timestamp: Date.now(),

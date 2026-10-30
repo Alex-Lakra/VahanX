@@ -51,7 +51,7 @@ export const CockpitCluster: React.FC<CockpitClusterProps> = ({ onSwitchView }) 
   const currentSpeed = Math.round(core.speed.value || 0);
   const coolantVal = Math.round(core.coolantTemp.value || 90);
   const boostVal = Number((core.boostGauge.value || 1.2).toFixed(2));
-  const mileageVal = Math.round(core.totalDistance.value || 290000);
+  const mileageVal = Math.round(core.totalDistance.value ?? 200);
   const battVoltage = Number((core.systemVoltage.value || 12.7).toFixed(1));
   const battSoC = Math.round(core.batterySoC.value || 98);
 

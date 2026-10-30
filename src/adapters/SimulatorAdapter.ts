@@ -129,8 +129,8 @@ export class SimulatorAdapter implements IHardwareAdapter {
     const socByte = Math.round((92 * 255) / 100);
     this.dataHandler?.(`41 5B ${socByte.toString(16).padStart(2, '0')}\r`);
 
-    // Total distance (PID 0x31)
-    this.dataHandler?.('41 31 30 A2\r');
+    // Total distance (PID 0x31: 200 km -> 0x00C8)
+    this.dataHandler?.('41 31 00 C8\r');
 
     // Injected DTC
     if (hasDTC && t % 20 === 0) {
